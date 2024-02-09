@@ -12,15 +12,27 @@
   <div class="timeline">
     <div class="view">
       <div class="events" id="events">
-        {% for event_info in event_infos -%}
-          <span class="event" secondsFromStart="{{ event_info['secondsFromStart'] }}"> </span>
+        {% for event_index in range(event_infos | length) %}
+          <span class="event" eventIndex="{{ event_index }}"> </span>
         {% endfor %}
+        <span class="restrict_marker" id="restrict_marker_start"> </span>
+        <span class="restrict_marker" id="restrict_marker_end"> </span>
       </div>
       <div class="legend" id="legend">
-        {% for hour in legend_hours -%}
-          <span hour="{{ loop.index0 }}">
-            {%- if hour % 12 == 0 %}12 {% else %}{{ hour % 12 }} {% endif %} 
-            {%- if hour < 12 %}am{% else %}pm{% endif %}</span>
+        {% for hour_index in range(25) -%}
+          {% set hour_value = 12 if ((start_hour + hour_index) % 12) == 0 else (start_hour + hour_index) % 12 -%}
+          {% set am = ((start_hour + hour_index) % 24) < 12 -%}
+          <div class="marker_hour" hour="{{ hour_index }}" quarter="0">
+            <span class="label">
+              {{ "{:d} {}".format(hour_value, "am" if am == True else "pm") }}</span>
+          </div>
+          {% for quarter_index in range(1, 1 if loop.last else 4) -%}
+            {% set quarter_value = 15 * quarter_index -%}
+            <div class="marker_quarter" hour="{{ hour_index }}" quarter="{{ quarter_index }}">
+              <span class="label">
+                {{ "{:d}:{:02d}".format(hour_value, quarter_value) }}</span>
+            </div>
+          {% endfor %}
         {% endfor %}
       </div>
     </div>
@@ -51,14 +63,15 @@
         </select>
         <select name="restrict_end_hour" id="restrict_end_hour">
           {% for hour in range(24) -%}
-            <option value={{ "{:02d}".format(hour) }}>           
-              {%- if hour % 12 == 0 %}12 {% else %}{{ hour % 12 }} {% endif %} 
-              {%- if hour < 12 %}am{% else %}pm{% endif %}</option>
+            <option value={{ "{:02d}".format(hour) }} {{ "selected" if loop.last else "" }}>           
+              {{ 12 if hour % 12 == 0 else hour % 12 }} 
+              {{ " am" if hour < 12 else " pm" }}</option>
           {% endfor %}
         </select>
         <select name="restrict_end_minute" id="restrict_end_minute">
           {% for minute in range(60) -%}
-            <option value={{ "{:02d}".format(minute) }}>{{ "{:02d}".format(minute) }}</option>
+            <option value={{ "{:02d}".format(minute) }} {{ "selected" if loop.last else "" }}>
+              {{ "{:02d}".format(minute) }}</option>
           {% endfor %}
         </select>
         <input type="checkbox" id="should_group" name="should_group" checked />
@@ -66,7 +79,7 @@
         <input type="number" id="group_space" name="group_space" min="0" max="300" value="5"/>
         <label for="group_space">min</label>
       </div>
-      <p class="button" onclick="UpdateView()">Update</p>
+      <a class="button" onclick="UpdateView()" href="javascript:void();">Update</a>
     </div>
   </div>
   <p id="debug"></p>
@@ -96,7 +109,8 @@
         <td>Min. Duration:</td><td id="stat_group_duration_min"></td>
       </tr>
       <tr>
-        <td></td><td></td><td>Avg. Duration:</td><td id="stat_group_duration_average"></td>
+        <td>Restricted Duration:</td><td id="stat_event_restrict_duration"></td>
+        <td>Avg. Duration:</td><td id="stat_group_duration_average"></td>
       </tr>
       <tr>
         <td></td><td></td><td>Max. Duration:</td><td id="stat_group_duration_max"></td>
@@ -127,7 +141,10 @@
   <script>
 
     const reportStartDateString = "{{ start_date_string }}";
+    const fullDaySec = 24 * 60 * 60;
     
+    const reportEvents = {{ event_infos | tojson }};
+
     // This is used to toggle the display of the event list.
     function ToggleEventList()
     {
@@ -143,11 +160,27 @@
       }
     }
 
-    // A helper for calculating the timeline width corresponding to a certain moment in time.
-    function CalculateTimelineWidthPercent(secondsFromStart, startOffset, viewSecondCount)
+    // Get the percentage of the view (from the left) corresponding to the given offset from the 
+    // start in seconds.
+    function CalculateTimelineWidthPercent(offsetSec, viewStartOffsetSec, viewEndOffsetSec)
     {
-      const timeOffset = (100 * secondsFromStart) / viewSecondCount;
-      return startOffset + timeOffset;
+      const viewSecondCount = viewEndOffsetSec - viewStartOffsetSec;
+      const widthPercent = (100 * (offsetSec - viewStartOffsetSec)) / viewSecondCount;
+      return widthPercent;
+    }
+
+    // An event.
+    class ReportEvent
+    {
+      constructor(eventIndex)
+      {
+        this.eventIndex = eventIndex;
+      }
+
+      getSecondsFromStart()
+      {
+        return reportEvents[this.eventIndex]["secondsFromStart"];
+      }
     }
 
     // For groups of events.
@@ -174,7 +207,7 @@
     let groupElements = [];
 
     // Creates the necessary HTML elements for the provided groupings, and deletes the old elements.
-    function UpdateGroupElements(groups, startOffset, viewSecondCount)
+    function UpdateGroupElements(groups, viewStartOffsetSec, viewEndOffsetSec)
     {
       const eventsElement = document.getElementById("events");
 
@@ -192,17 +225,17 @@
         groupElement.setAttribute("class", "group");
 
         // Size and positioning.
-        const startPercentage = CalculateTimelineWidthPercent(group["startOffsetSec"], startOffset, 
-          viewSecondCount);
-        const endPercentage = CalculateTimelineWidthPercent(group["endOffsetSec"], startOffset, 
-          viewSecondCount);
-        const centerPercentage = (startPercentage + endPercentage) / 2;
-        groupElement.style.left = centerPercentage + "%";
+        const startPercent = CalculateTimelineWidthPercent(group["startOffsetSec"], 
+          viewStartOffsetSec, viewEndOffsetSec);
+        const endPercent = CalculateTimelineWidthPercent(group["endOffsetSec"], viewStartOffsetSec, 
+          viewEndOffsetSec);
+        const centerPercent = (startPercent + endPercent) / 2;
+        groupElement.style.left = centerPercent + "%";
         
-        const widthPercentage = endPercentage - startPercentage;
-        if (widthPercentage > 0)
+        const widthPercent = endPercent - startPercent;
+        if (widthPercent > 0)
         {
-          groupElement.style.width = widthPercentage + "%";
+          groupElement.style.width = widthPercent + "%";
         }
 
         // Actually add the element.
@@ -236,13 +269,9 @@
     }
 
     // This handles updating the stats view.
-    function UpdateStats(groups)
+    function UpdateStats(events, groups, restrictSecondCount)
     { 
-      const eventsElement = document.getElementById("events");
-      const eventElements = eventsElement.getElementsByClassName("event");
-
-      const statEventsElement = document.getElementById("stat_events");
-      statEventsElement.innerHTML = eventElements.length;
+      document.getElementById("stat_events").innerHTML = events.length;
 
       let eventIntervalMinSec = Number.POSITIVE_INFINITY;
       let eventIntervalMaxSec = 0;
@@ -250,9 +279,9 @@
 
       let lastSecondsFromStart = null;
       
-      for (let eventElement of eventElements)
+      for (let event of events)
       {
-        const secondsFromStart = parseInt(eventElement.getAttribute("secondsFromStart"));
+        const secondsFromStart = event.getSecondsFromStart();
 
         if (lastSecondsFromStart === null)
         {
@@ -278,13 +307,12 @@
 
       let eventsDurationSec = 0;
 
-      if (eventElements.length > 1)
+      if (events.length > 1)
       {
-        eventIntervalAverageSec /= (eventElements.length - 1);
+        eventIntervalAverageSec /= (events.length - 1);
 
-        const firstSecondsFromStart = parseInt(eventElements[0].getAttribute("secondsFromStart"));
-        const lastSecondsFromStart = 
-          parseInt(eventElements[eventElements.length - 1].getAttribute("secondsFromStart"));
+        const firstSecondsFromStart = events[0].getSecondsFromStart();
+        const lastSecondsFromStart = events[events.length - 1].getSecondsFromStart();
 
         eventsDurationSec = lastSecondsFromStart - firstSecondsFromStart;
       }
@@ -304,6 +332,17 @@
       document.getElementById("stat_event_duration").innerHTML = 
         ConvertDurationToString(eventsDurationSec);
       
+      const restrictDurationElement = document.getElementById("stat_event_restrict_duration");
+
+      if (restrictSecondCount < fullDaySec)
+      {
+        restrictDurationElement.innerHTML = ConvertDurationToString(restrictSecondCount);
+      }
+      else
+      {
+        restrictDurationElement.innerHTML = "-";
+      }
+
       const statGroupsElement = document.getElementById("stat_groups");
       statGroupsElement.innerHTML = groups.length;
 
@@ -392,30 +431,86 @@
     // This handles updating the view.
     function UpdateView()
     {
-      
+      // Get the start and end times of the report in UTC.
       const reportStartHour = 17;
       const reportStartDate = new Date(reportStartDateString + "T" + reportStartHour + ":00:00Z");
+            
+      const reportStartTimeSec = Math.trunc(reportStartDate.getTime() / 1000);
+  
+      const reportEndTimeSec = reportStartTimeSec + fullDaySec;
 
-      const shouldRestrictView = document.getElementById("should_restrict").checked;
+      let shouldRestrictView = document.getElementById("should_restrict").checked;
 
-      let restrictStartDate = DateFromChoices("restrict_start_date", "restrict_start_hour", 
+      // Get the selected restrict start and end times in UTC.
+      const restrictStartDate = DateFromChoices("restrict_start_date", "restrict_start_hour", 
         "restrict_start_minute");
 
-      let restrictEndDate = DateFromChoices("restrict_end_date", "restrict_end_hour", 
+      const restrictEndDate = DateFromChoices("restrict_end_date", "restrict_end_hour", 
         "restrict_end_minute");
       
-      // DEBUG
-      document.getElementById("debug").innerHTML = reportStartDate.toUTCString() + "  " + 
-        restrictStartDate.toUTCString() + " " + restrictEndDate.toUTCString();
+      const restrictStartTimeSec = Math.trunc(restrictStartDate.getTime() / 1000); 
+      
+      const restrictEndTimeSec = Math.trunc(restrictEndDate.getTime() / 1000);
+
+      // Convert the restrict start and end times into offsets from the beginning of the report.
+      let restrictStartOffsetSec = 0;
+      let restrictEndOffsetSec = fullDaySec;
+
+      if (shouldRestrictView == true)
+      {
+        if ((restrictStartTimeSec > reportStartTimeSec) && (restrictStartTimeSec < 
+          reportEndTimeSec))
+        {
+          restrictStartOffsetSec = restrictStartTimeSec - reportStartTimeSec;
+        }
+
+        if ((restrictEndTimeSec > reportStartTimeSec) && (restrictEndTimeSec < reportEndTimeSec))
+        { 
+          restrictEndOffsetSec = restrictEndTimeSec - reportStartTimeSec;
+        }
+      }
+
+      // Modify whether we actually restricted view based on the selected times.
+      shouldRestrictView = shouldRestrictView && (restrictStartOffsetSec < restrictEndOffsetSec) && 
+        ((restrictStartOffsetSec > 1) || (restrictEndOffsetSec < fullDaySec));
+
+      // Increase the view size by a certain margin percentage on each side.
+      const marginFraction = 0.025;
+      const restrictSecondCount = restrictEndOffsetSec - restrictStartOffsetSec;
+
+      const expandedSecondCount = restrictSecondCount / (1.0 - (2 * marginFraction));
+      const marginSecondCount = Math.ceil(0.5 * (expandedSecondCount - restrictSecondCount));
+
+      const viewStartOffsetSec = restrictStartOffsetSec - marginSecondCount;
+      const viewEndOffsetSec = restrictEndOffsetSec + marginSecondCount;
+
+      const viewSecondCount = viewEndOffsetSec - viewStartOffsetSec;
+
+      // If the view is restricted, show the restrict markers at the proper location.
+      const restrictMarkerStartElement = document.getElementById("restrict_marker_start");
+      const restrictMarkerEndElement = document.getElementById("restrict_marker_end");
+
+      if (shouldRestrictView == true)
+      {
+        const startPercent = CalculateTimelineWidthPercent(restrictStartOffsetSec, 
+          viewStartOffsetSec, viewEndOffsetSec);
+        const endPercent = CalculateTimelineWidthPercent(restrictEndOffsetSec, viewStartOffsetSec, 
+          viewEndOffsetSec);
+
+        restrictMarkerStartElement.style.display = "block";
+        restrictMarkerEndElement.style.display = "block";
+        restrictMarkerStartElement.style.left = startPercent + "%";
+        restrictMarkerEndElement.style.left = endPercent + "%";
+      }
+      else
+      {
+        restrictMarkerStartElement.style.display = "none";
+        restrictMarkerEndElement.style.display = "none";
+      }
 
       // We are going to position all of the events based on how far they are from the start.
-      const viewHourCount = 25;
-      const viewSecondCount = viewHourCount * 60 * 60;
+      const viewEvents = [];
 
-      // The first tick mark doesn't occur exactly at the left. It is one half of the width of each 
-      // hour.
-      const startOffset = 50 / viewHourCount;
-      
       // Before we go through and position the events, figure out whether we are going to be doing 
       // grouping.
       const shouldGroup = document.getElementById("should_group").checked;
@@ -431,10 +526,39 @@
       
       for (let eventElement of eventElements)
       {
+        const eventIndex = parseInt(eventElement.getAttribute("eventIndex"));
+
+        if ((eventIndex < 0) || (eventIndex >= reportEvents.length))
+        {
+          continue;
+        }
+
+        const eventInfo = new ReportEvent(eventIndex);
+
         // The percentage of the view width that this event should be offset.
-        const secondsFromStart = parseInt(eventElement.getAttribute("secondsFromStart"));
-        const eventOffset = (100 * secondsFromStart) / viewSecondCount;
-        eventElement.style.left = (startOffset + eventOffset) + "%";
+        const secondsFromStart = eventInfo.getSecondsFromStart();
+        const viewPercent = CalculateTimelineWidthPercent(secondsFromStart, viewStartOffsetSec, 
+          viewEndOffsetSec);
+
+        if ((viewPercent < 0) || (viewPercent > 100))
+        {
+          // Hide those out of view.
+          eventElement.style.display = "none";
+        }
+        else
+        {
+          eventElement.style.display = "block";
+          eventElement.style.left = viewPercent + "%";
+        }
+
+        // Only add events in the restricted view.
+        if ((secondsFromStart < restrictStartOffsetSec) || (secondsFromStart > 
+          restrictEndOffsetSec))
+        {
+          continue;
+        }
+
+        viewEvents.push(eventInfo);
 
         if (shouldGroup == false)
         {
@@ -462,7 +586,7 @@
         group["endOffsetSec"] = secondsFromStart;
       }
 
-      // Add any trailing loops to the list.
+      // Add any trailing groups to the list.
       if (group !== null)
       {
         groups.push(group);
@@ -470,21 +594,80 @@
 
       if (shouldGroup == true)
       {
-        UpdateGroupElements(groups, startOffset, viewSecondCount);
+        UpdateGroupElements(groups, viewStartOffsetSec, viewEndOffsetSec);
       }
 
       // Now we are going to programmatically line up and size the legend times.
-      const legendElement = document.getElementById("legend");
-      const legendTimeElements = legendElement.getElementsByTagName("span");
-      
-      const timeWidth = (100 / legendTimeElements.length);
-      for (let legendIndex = 0; legendIndex < legendTimeElements.length; legendIndex++)
+      const quarterHourSec = 15 * 60;
+
+      const visibleQuarterHourCount = Math.trunc(viewSecondCount / quarterHourSec);
+
+      let skipAmount = 0;
+
+      if (visibleQuarterHourCount > 90)
       {
-        legendTimeElements[legendIndex].style.width = timeWidth + "%";
-        legendTimeElements[legendIndex].style.left = (legendIndex * timeWidth) + "%";
+        skipAmount = 7;
+      }
+      else if (visibleQuarterHourCount > 55)
+      {
+        skipAmount = 3;
+      }
+      else if (visibleQuarterHourCount > 30)
+      {
+        skipAmount = 1;
       }
 
-      UpdateStats(groups);
+      const labelWidthPercent = 4;
+
+      const legendElement = document.getElementById("legend");
+      
+      for (let legendTimeElement of legendElement.children)
+      {
+        const hourIndex = parseInt(legendTimeElement.getAttribute("hour"));
+        const quarterIndex = parseInt(legendTimeElement.getAttribute("quarter"));
+
+        const markerIndex = (4 * hourIndex) + quarterIndex;
+
+        const offsetSec = markerIndex * quarterHourSec;
+
+        // Always display the marker if it's in view.
+        const markerPercent = CalculateTimelineWidthPercent(offsetSec, viewStartOffsetSec, 
+          viewEndOffsetSec);
+
+        if ((markerPercent < 0) || (markerPercent > 100))
+        {
+          legendTimeElement.style.display = "none";
+          continue;
+        }
+
+        const previousPercent = markerPercent - (0.5 * labelWidthPercent);        
+        const nextPercent = markerPercent + (0.5 * labelWidthPercent);
+
+        legendTimeElement.style.display = "block";
+        legendTimeElement.style.width = (nextPercent - previousPercent) + "%";
+        legendTimeElement.style.left = markerPercent + "%";
+
+        // Only display the label based on resolution and its width.
+        let labelDisplay = "block";
+
+        const shouldHide = (markerIndex % (skipAmount + 1)) != 0;
+
+        if (shouldHide == true)
+        {
+          labelDisplay = "none";
+        }
+        if ((previousPercent < 0) || (nextPercent > 100))
+        {
+          labelDisplay = "none";
+        }
+
+        for (let labelElement of legendTimeElement.children)
+        {
+          labelElement.style.display = labelDisplay;
+        }
+      }
+
+      UpdateStats(viewEvents, groups, restrictSecondCount);
     }
 
     UpdateView();
