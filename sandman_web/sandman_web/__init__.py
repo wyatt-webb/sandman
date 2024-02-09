@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask,request,redirect
 
 def create_app(test_config = None):
     """Creates and configures the app.
@@ -14,7 +14,7 @@ def create_app(test_config = None):
     )
 
     if test_config is None:
-        # Load the instance configwhen not testing, if it exists.
+        # Load the instance config when not testing, if it exists.
         app.config.from_pyfile('config.py', silent = True)
     else:
         # Otherwise use the test config.
@@ -30,6 +30,11 @@ def create_app(test_config = None):
     @app.route('/hello')
     def hello():
         return 'Hello, World!'
+    
+    @app.route('/rhasspy')
+    def rhasspy():
+        server_ip = request.host.split(':')[0]
+        return redirect("http://" + server_ip + ':12101')
 
     from . import reports
     app.register_blueprint(reports.blueprint)
