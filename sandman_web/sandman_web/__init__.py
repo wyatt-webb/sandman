@@ -26,6 +26,7 @@ def create_app(test_config = None):
     except OSError:
         pass
 
+    # Route for Rhasspy link to utilize.
     @app.route('/rhasspy')
     def rhasspy():
         server_ip = request.host.split(':')[0]
