@@ -26,11 +26,6 @@ def create_app(test_config = None):
     except OSError:
         pass
 
-    # A simple page that says hello.
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
-    
     @app.route('/rhasspy')
     def rhasspy():
         server_ip = request.host.split(':')[0]
