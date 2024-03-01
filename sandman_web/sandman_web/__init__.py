@@ -26,7 +26,16 @@ def create_app(test_config = None):
     except OSError:
         pass
 
+<<<<<<< HEAD
     # Route for Rhasspy link to utilize.
+=======
+    # Sandman Reports Home Page
+    @app.route('/')
+    def home():
+        return reports.index()
+
+    # A path to redirect to the rhasspy admin home page.
+>>>>>>> 1d27f6e40c51b9b1712ca12c70b1396092939e37
     @app.route('/rhasspy')
     def rhasspy():
         server_ip = request.host.split(':')[0]
