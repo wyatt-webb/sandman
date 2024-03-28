@@ -41,6 +41,9 @@ def create_app(test_config = None):
     from .reports import reports
     app.register_blueprint(reports.blueprint)
 
+    from .settings import settings
+    app.register_blueprint(settings.settings_bp)
+
     from .status import status
     app.register_blueprint(status.status_bp)
 
