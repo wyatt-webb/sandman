@@ -1,9 +1,19 @@
 {% extends 'base.html' %}
 
+{% block stylesheet %}
+  <link rel="stylesheet" href="{{ url_for('.static', filename='settings.css') }}">
+{% endblock %}
+
 {% block header %}
   <h1>{% block title %}Settings{% endblock %}</h1>
 {% endblock %}
 
 {% block content %}
+
+<div class="configButtons">
+  <ul>
+    <li><a id="downloadConfig" href="{{ url_for('settings.download_config') }}">Download Config</a></li>
+  </ul>
+</div>
 
 {% endblock %}

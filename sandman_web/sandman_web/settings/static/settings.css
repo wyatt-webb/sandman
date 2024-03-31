@@ -1,0 +1,26 @@
+@import url(../../static/style.css);
+
+.configButtons {
+    display: flex;
+    align-items: center;
+}
+
+.configButtons ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.configButtons li a {
+    color: white;
+    background-color: green;
+    display: block;
+    padding: 0.5rem;
+    margin: 0.25rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+ }
+
+.configButtons a:hover {
+    background-color: blueviolet;
+}
