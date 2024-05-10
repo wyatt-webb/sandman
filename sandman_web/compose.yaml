@@ -1,0 +1,23 @@
+services:
+  web:
+    container_name: sandman_web
+    restart: unless-stopped
+    build: .
+    ports:
+      - "8080:5000"
+    volumes:
+      - /usr/local/var/sandman/reports:/usr/local/var/sandman/reports:ro
+      - /usr/local/etc/sandman:/usr/local/etc/sandman
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/local/var/sandman:/usr/local/var/sandman
+    networks:
+      - sandman_network
+volumes:
+  reports:
+  sandman:
+  docker:
+  log:
+
+networks:
+  sandman_network:
+    name: sandman_network
