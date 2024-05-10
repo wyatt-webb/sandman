@@ -10,7 +10,7 @@ logger = logging.getLogger()
 logFormatter = logging.Formatter("[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 
 # Add file handler to the root logger
-fileHandler = RotatingFileHandler("flask_app.log", backupCount=10, maxBytes=1000000)
+fileHandler = RotatingFileHandler("/usr/local/var/sandman/flask_app.log", backupCount=10, maxBytes=1000000)
 fileHandler.setLevel(logging.WARNING)
 fileHandler.setFormatter(logFormatter)
 logger.addHandler(fileHandler)
