@@ -157,35 +157,16 @@ sudo make install
 
 ### Web interface with Flask
 
-Sandman has a web interface implemented with Flask. These instructions cover what you need to do in order to run this web interface in development mode. In the future there will be a way to run this web interface in a more production friendly environment.
-
-Installation instructions can be found here: [Flask Installation](https://flask.palletsprojects.com/en/3.0.x/installation/). However, they are not complicated and we can skip a step, so they will be provided in the following instructions. Optionally, you may be interested in installing and using a [byobu session](https://www.byobu.org/documentation) to install and run your Flask server within so that the terminal can be used while the server runs. Assuming that your Sandman repository is stored in the home directory, it is recommended to switch to the Sandman web directory in order to set up the virtual Python environment. This is not strictly required, but is recommended by Flask.
+Sandman has a web interface implemented with Flask inside of a Docker container. These instructions cover what you need to do in order to run this web interface and there after access the interface.
 ```bash
 cd ~/sandman/sandman_web
 ```
+The following will start the Sandman web container.
 ```bash
-python3 -m venv .venv
+docker compose up -d
 ```
 
-Once the virtual environment is made, you will activate it with the following command. This must be done in this directory every time you want to start up the web server.
-
-```bash
-. .venv/bin/activate
-```
-
-Then you can install Flask and other dependencies in the virtual environment with pip.
-
-```bash
-pip install -r pip_requirements.txt
-```
-
-To run the web server in development mode use the following command. This must be done after activating the virtual environment with the command given earlier.
-
-```bash
-flask --app sandman_web run --debug --host 0.0.0.0
-```
-
-Then in your web browser enter the following URL: YOUR_SANDMAN_IP_ADDRESS:5000. You can stop the web server by pressing CTRL + C in the terminal.
+Then in your web browser enter the following URL: http://YOUR_SANDMAN_IP_ADDRESS:8080 to access Sandman's GUI web interface.
 
 ### ha-bridge
 
