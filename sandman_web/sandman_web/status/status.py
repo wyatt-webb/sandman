@@ -1,7 +1,7 @@
 import psutil, docker, requests
 
 from flask import (
-    Blueprint, render_template
+    Blueprint, render_template, current_app, request
 )
 from werkzeug.exceptions import abort
 
@@ -65,10 +65,24 @@ def check_ha_bridge_health() -> int | str:
 
     #Get the ha-bridge web response
     try:
-        ha_bridge_web_response = requests.get('http://localhost:80')
+        ha_bridge_web_response = requests.get('http://habridge:80')
         ha_bridge_web_status = ha_bridge_web_response.status_code
     except:
         ha_bridge_web_status = 404
+        current_app.logger.warning('ha-bridge web response check failed')
+        try:
+            ha_bridge_web_response_other_port = requests.get('http://habridge:8080')
+            ha_bridge_web_status = ha_bridge_web_response_other_port
+        except:
+            ha_bridge_web_status = 404
+            current_app.logger.warning('ha-bridge web response check failed on port 8080 as well')
+            try:
+                server_ip = request.host.split(':')[0]
+                ha_bridge_web_response_other_port = requests.get('http://server_ip:80')
+                ha_bridge_web_status = ha_bridge_web_response_other_port
+            except:
+                ha_bridge_web_status = 404
+                current_app.logger.warning('ha-bridge web response check failed on port 80 on the host as well')
 
     #Check that the ha-bridge container is running or the web response is OK
     try:
