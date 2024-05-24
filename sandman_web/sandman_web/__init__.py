@@ -49,6 +49,16 @@ def create_app(test_config = None):
     def rhasspy():
         server_ip = request.host.split(':')[0]
         return redirect("http://" + server_ip + ':12101')
+    
+    @app.route('/ha-bridge')
+    def ha_bridge():
+        try:
+            resp = requests.get('http://habridge:80', stream=True)
+            remote_server_ip = resp.raw._connection.sock.getpeername()[0]
+            return redirect("http://" + remote_server_ip + ":80")
+        except:
+            server_ip = request.host.split(':')[0]
+            return redirect("http://" + server_ip + ':80')
 
     # Register blueprints 
     from .reports import reports

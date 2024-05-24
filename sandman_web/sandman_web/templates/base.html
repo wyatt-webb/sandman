@@ -15,6 +15,19 @@
     <li><a href="{{ url_for('status.status_home') }}">💓Status</a></li>
     {% endif %}
   </ul>
+  {% if ha_bridge_online is sameas true %}
+  <ul>
+    <li>
+      <a href="{{ url_for('ha_bridge') }}" target="_blank">Ha-Bridge</a>
+    </li>
+  </ul>
+  {% else %}
+  <ul>
+    <li>
+      <a>Ha-Bridge</a>
+    </li>
+  </ul>
+  {% endif %}
   <ul>
     <li><a href="{{ url_for('rhasspy') }}" target="blank">Rhasspy</a></li>
   </ul>
