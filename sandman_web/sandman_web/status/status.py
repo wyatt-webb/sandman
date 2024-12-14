@@ -23,7 +23,7 @@ def check_sandman_health() -> int:
             return 1
 
 #Check that Rhasspy is running and responding
-def check_rhasspy_health() -> int | str:
+def check_rhasspy_health() -> tuple[int, str]:
     """Returns a status code or string based on container status and http request response."""
 
     #Get the Rhasspy contatiner status
@@ -52,7 +52,7 @@ def check_rhasspy_health() -> int | str:
         return "Failed check"
 
 #Check that ha-bridge is running and responding
-def check_ha_bridge_health() -> int | str:
+def check_ha_bridge_health() -> tuple[int, str]:
     """Returns a status code or string based on container status and http request response."""
 
     #Get the ha-bridge contatiner status

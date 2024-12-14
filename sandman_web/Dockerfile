@@ -1,4 +1,4 @@
-FROM python:3.13.0b1-alpine3.19
+FROM python:3.9.21-alpine3.19
 WORKDIR /code
 ENV FLASK_APP=sandman_web/__init__.py
 ENV FLASK_RUN_HOST=0.0.0.0
