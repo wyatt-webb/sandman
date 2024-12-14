@@ -1,30 +1,36 @@
 <!doctype html>
-<title>{% block title %}{% endblock %} - Sandman</title>
-{% block stylesheet %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-{% endblock %}
-<nav>
-  <h1>Sandman</h1>
-  <ul>
-      <li><a href="{{ url_for('reports.index') }}">Reports</a>
-  </ul>
-  <ul>
-    {% if health_issue is sameas true %}
-    <li><a class="blink-bg" href="{{ url_for('status.status_home') }}">💓Status</a></li>
-    {% else %}
-    <li><a href="{{ url_for('status.status_home') }}">💓Status</a></li>
-    {% endif %}
-  </ul>
-  <ul>
-    <li><a href="{{ url_for('rhasspy') }}" target="blank">Rhasspy</a></li>
-  </ul>
-</nav>
-<section class="content">
-  <header>
-    {% block header %}{% endblock %}
-  </header>
-  {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
-  {% endfor %}
-  {% block content %}{% endblock %}
-</section>
+<html lang="en">
+  <head>
+      <title>{% block title %}{% endblock %} - Sandman</title>
+      {% block stylesheet %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+      {% endblock %}
+  </head>
+  <body>
+    <nav>
+      <h1>Sandman</h1>
+      <ul>
+          <li><a href="{{ url_for('reports.index') }}">Reports</a>
+      </ul>
+      <ul>
+        {% if health_issue is sameas true %}
+        <li><a class="blink-bg" href="{{ url_for('status.status_home') }}">💓Status</a></li>
+        {% else %}
+        <li><a href="{{ url_for('status.status_home') }}">💓Status</a></li>
+        {% endif %}
+      </ul>
+      <ul>
+        <li><a href="{{ url_for('rhasspy') }}" target="blank">Rhasspy</a></li>
+      </ul>
+    </nav>
+    <section class="content">
+      <header>
+        {% block header %}{% endblock %}
+      </header>
+      {% for message in get_flashed_messages() %}
+        <div class="flash">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </section>
+  </body>
+</html>
